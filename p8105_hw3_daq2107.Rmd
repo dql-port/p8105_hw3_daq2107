@@ -34,8 +34,6 @@ str(ny_noaa) # Obtaining the data types of each variable
 
 # We can also look at the extent of NA values in each variable using a pipe with the summarize() function:
 
-##### maybe clean up with across()
-
 ny_noaa %>% 
   summarize(
     prop_na_id = mean(is.na(id)), # Gets me the proportion of NAs in each variable
@@ -113,7 +111,7 @@ ny_noaa_cleaned %>%
 
 After our initial cleaning and exploring, we can create a two-panel plot by making use of the _ggplot_ package, which is embedded withing the _tidyverse_. Since we are only asked to show the maximum temperatures for the months of July and January across different years, we can use the _filter()_ function along with out _group_by()_ function to group by different weather station as well as months and years. Moreover, to get our average maximum temperature, we can make use of _summarize()_ in the same fashion as we did above:
 
-```{r two_panel_plot}
+```{r ggp1_1_two_panel_plot}
 
 ny_noaa_cleaned %>% 
   filter(month %in% c(7, 1)) %>% # Recall our months are in number format
@@ -139,15 +137,14 @@ ny_noaa_cleaned %>%
        caption = "Data from the 'p8105.datasets' package")
 
 ```
-############ horizontal facet? ask office hours...
 
 As we can see from the output, ggplot automatically removes the NA values for visualization purposes. Moreover, we can see that the plot shows a general (and expected) pattern where January is colder than July. We also see that most of the observations follow an apparent structure: they for conglomerate around 0°C for January, whereas they conglomerate around 28°C for July. There is some outlier variability, with a sudden drop on average max temperature around 1995 for January. There is not much variation for the July data except for a data point around 1988.
 
 ### Two-Panel Plot: Max. vs. Min Temperature
 
-We can now proceed to make an additional two-panel plot using the maximum and minimum temperature values (variables _tmax_ and _tmin_, respectively) with the entirety of our data set. We can do this in a fashion similar like above, but we will now utilize the _hexbin_ package to create graphs other than a scatter plot for the minimum vs. maximum temperature plot. For the snowfall plot, since we are dealing with an univariate plot, we can create a density distribution:
+We can now proceed to make an additional two-panel plot using the maximum and minimum temperature values (variables _tmax_ and _tmin_, respectively) with the entirety of our data set. We can do this in a fashion similar like above, but we will now utilize the _hexbin_ package to create graphs other than a scatter plot for the minimum vs. maximum temperature plot. I used the 2-D Bind approach to show the association of the two continuous variables. For the snowfall plot, since we are dealing with an univariate (caegorical vs. continuous) plot, I initially thought of creating a density distribution. However, it did not allow me to create a good comparison and the number of years made it trickier. So I opted in for a boxplot to better see descriptive statistics like IQ range and median, and added slight jumps in years and also cokor to make it more digestible visually:
 
-```{r max_vs_min}
+```{r ggp1_2_max_vs_min}
 
 # Following a similar process like above plus what we learned in lecture, we can create two data frames for each of the panels:
 
@@ -177,7 +174,7 @@ ggp_snowdist =
   ggplot(
     aes(x = as.factor(year), y = snow, fill = as.factor(year))) +
   geom_boxplot(show.legend = FALSE) +
-  scale_x_discrete(breaks = seq(1981, 2010, by = 4)) + # I Googled this command
+  scale_x_discrete(breaks = seq(1981, 2010, by = 4)) + # I Googled this command for ggplot
   theme(legend.position = "bottom") +
   labs(title = "Snowfall Distribution by Year", 
        x = "Year", 
@@ -189,9 +186,6 @@ ggp_snowdist =
 ggp_maxnmin + ggp_snowdist
 
 ```
-
-######## thoughts on boxplot???
-######## ask about googling commands?
 
 **Description:** From the output, we can see that the left panel--corresponding to the Maximum vs. Minimum Temperature--shows a positive correlation between the two variables. This makes sense since we expect temperatures to not differ too much in a single day. Moreover, we see that in the case of the right panel, where we restricted to show between 0-100 mm of snowfall, the medians and IQ ranges remained consistent across the years. However, we also see that the years 1998, 2006, and 2010 show multiple outliers.
 
@@ -246,8 +240,6 @@ head(accel_data, 5)
 head(covar_data, 5)
 
 ```
-####### left or innner joinn????
-
 
 After we tidied our data, we can now proceed to merge it. For this, we will make use of the common _SEQN_ variable that is found in both data frames. From the data wrangling lectures, we know that we can use the _left_join()_ function to do this so that we can preserve the observations from the cleaned demographic data:
 
@@ -280,11 +272,33 @@ nhanes_merged %>%
     names_from = sex,
     values_from = n
   ) %>% 
-  knitr::kable(col.names = c("Education", "Female", "Male")) #Looked up how to modify headers
+  knitr::kable(col.names = c("Education", "Female", "Male"))
 
 ```
 
 **Table Description:** From the table, we can see that the individuals in our sample who have an education level corresponding to less than high school are evenly split between males and females, with `r nhanes_merged %>% filter(education == "Less than high school", sex == "Male") %>% nrow()` males and `r nhanes_merged %>% filter(education == "Less than high school", sex == "Female") %>% nrow()` females. However, males dominate in the high school equivalent level, with `r nhanes_merged %>% filter(education == "High school equivalent", sex == "Male") %>% nrow()` males and `r nhanes_merged %>% filter(education == "High school equivalent", sex == "Female") %>% nrow()` females. Lastly, once we reach upper levels of education, females take the lead in the more than high school category, with `r nhanes_merged %>% filter(education == "More than high school", sex == "Male") %>% nrow()` males and `r nhanes_merged %>% filter(education == "More than high school", sex == "Female") %>% nrow()` females.
+
+### Visualizing Age Distribution Across Sex and Education Levels
+
+We can assess the differences in the distribution of age across sex and education level categories. To do this, we will use or merged NHANES data frame and make use of _ggplot_ in the same fashion before. I went with a histogram given we are doing a continuous vs. categorical variable, and faceted by both sex and education level, since facetting only by education led to an overcrowded figure that was hard to interpret:
+
+```{r ggp2_1_age_dist}
+
+nhanes_merged %>% 
+  ggplot(
+    aes(x = age, fill = sex)) +
+  geom_histogram(bindwidth = 5, position = "dodge") + # Dodge avoids overlap
+  facet_grid(sex ~ education) + # Facetting by education level and sex to better over intersection
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5)) + # Centering the title
+  labs(title = "Age Distribution by Sex and Education Level in NHANES Sample", 
+       x = "Age (Years)", 
+       y = "Number of NHANES Participants",
+       caption = "Data from NHANES Study, provided by Prof. Goldssmith")
+
+```
+
+**Figure Description:** From the figure, we can see that for those with an education level higher than high school, there is a bigger concentration of people in the 20-40 years of age. This makes sense since these are the ages when people usually attend college and/or graduate school. We also can see that in this education and age group, there is a higher concentration of female individuals. On a more general level, there seems to be an equitable distribution of the number of participants between less than highschool and highschool equivalent education levels, with an overall bigger concentration for those with education higher than highschool. In these highschool or lower categories, there is a more prominent concentration of older participants, especially around ages 70-80. We can speculate this may due that, in older times, it was more common to interrupt one's studies at the highschool (or below) level.
 
 ### Total Activity per Participant
 
@@ -313,7 +327,7 @@ head(total_act_df, 5)
 
 We successfully created our total activity variable and kept our demographic variables! We can now proceed to create our total activity vs. age graph while comparing the sexes and having separate panels for each education level. We will, of course, make use of ggplot for this:
 
-```{r}
+```{r ggp2_2_total_act}
 
 total_act_df %>% 
   ggplot(
@@ -321,7 +335,7 @@ total_act_df %>%
   geom_point(aes(color = sex), alpha = 0.5) + # Grabbed from lecture example
   geom_smooth(se = FALSE) +
   theme(legend.position = "bottom",
-        plot.title = element_text(hjust = 0.5),) + # Googled how to center my title
+        plot.title = element_text(hjust = 0.5),) + # Googled how to center my title in ggplot
   facet_grid(. ~ education) + 
   labs(title = "Total Activity Trend Across Ages (Subdivided by Sex and Education Level)", 
        x = "Age", 
@@ -339,7 +353,7 @@ However, we can see that the decline in total activity is more pronounced for th
 
 In a similar way like how we created the data frame for total activity, we can now group our minutes by each participant to show the differences in activity in a single day. We will still make use of _ggplot_ to create our plot similarly like in the last section:
 
-```{r in_a_days_life}
+```{r ggp2_3_days_activ}
 
 daily_act_df =
   nhanes_merged %>% 
@@ -374,11 +388,7 @@ daily_act_df %>%
        color = "Sex",
        caption = "Data publicly available from NHANES study.")
 
-
-
-
 ```
-######### should I keep geom_point or maybe move to geom_line?
 
 **Plot Description:** The graphs produced clearly demonstrate a general trend: there is slight activity in the first minutes of the day (late night), which one may speculate it is due to not having reached deep sleep yet or just getting into bed. Then, approximately around the minute 400 (corresponding to the 6-7 AM time mark) all groups have a drastic increase in activity corresponding to the start of their day. This pattern persists irrespective of sex or education level. However, we can see that the group with education level less than high school has a higher average MIMS in the first hours of the day compared to the other education groups. Moreover, female individuals seem to have slightly more activity throughout the day compared to males in all education groups. It is also interesting to highlight that the those with ecucation more than high school have a plateau in their average activity for most of the day, potentially due to more sedentary jobs, compared to those with less than high school education.
 
@@ -452,8 +462,6 @@ head(citi_merged, 5)
 # Voila! All good :)
   
 ```
-####### can I use dollar signs for inline R?
-
 
 **Data Set Description:** From our merge, we now have a data frame with `r nrow(citi_merged)` observations and `r ncol(citi_merged)` variables using data corresponding to 1% of the NYC rides in four months from two different years: January and July in 2020 and 2024. Moreover, the variables include a distinct ride ID (_ride_id_), the type of bike used (_rideable_type_), the day of the which the bike ride took place (_weekdays_), the duration of the ride in minutes (_duration_), the station from which the ride started (_start_station_name_), a binary variable to describe the rider as member or casual rider (_member_casual_), and our newly created month and year variables.
 
@@ -477,11 +485,7 @@ citi_merged %>%
   ) %>% 
   knitr::kable(col.names = c("Month", "Year", "Casual", "Member"))
 
-
 ```
-
-####### how much should we be describing in general?
-
 
 **Table Description:** From the table created, we see that the July months have a significantly higher number of bike rides compared to January of the same year. This is expected since the summer months are warmer and more people do outdoor activities. Moreover, we see there is an increase in both casual and member riders between 2020 and 2024, by about `r round(((nrow(filter(citi_merged, year == 2024, member_casual == "casual"))/nrow(filter(citi_merged, year == 2020, member_casual == "casual")))-1)*100, 2)`% in casual riders and `r round(((nrow(filter(citi_merged, year == 2024, member_casual == "member"))/nrow(filter(citi_merged, year == 2020, member_casual == "member")))-1)*100, 2)`% in member riders.
 
@@ -489,7 +493,7 @@ citi_merged %>%
 
 Another interesting question: which were the most popular stations in New York City during July 2024? To answer this, we can use the same strategy as in Problem 1 to obtain a count of for each unique station and then using _arrange()_ to obtain the results in descending order. We can then use _knitr::kable()_ again to produce our table:
 
-```{r}
+```{r popular_stations}
 
 citi_merged %>% 
   filter(month == "July", year == 2024) %>% # Filtering for July 2024 results
@@ -497,8 +501,8 @@ citi_merged %>%
   count(start_station_name) %>% 
   drop_na() %>%  # Removing missing values
   arrange(desc(n)) %>% # Using 'desc' to get output in descending order rather than ascending
-  head(5) # Getting the top five results
-
+  head(5) %>% # Getting the top five results
+  knitr::kable(col.names = c("Starting Bike Station", "Total Rides"))
 ```
 
 **Table Description:** From the table created, we see that the the most frequented stations to start rides from in July 2024 were, in this order: (1) Pier 61 at Chelsea Piers with `r citi_merged %>% filter(year == 2024, month == "July", start_station_name == "Pier 61 at Chelsea Piers") %>% nrow()` rides, (2) University Pl & E 14 St with `r citi_merged %>% filter(year == 2024, month == "July", start_station_name == "University Pl & E 14 St") %>% nrow()` rides, (3) W 21 St & 6 Ave with `r citi_merged %>% filter(year == 2024, month == "July", start_station_name == "W 21 St & 6 Ave") %>% nrow()` rides, (4) West St & Chambers St with `r citi_merged %>% filter(year == 2024, month == "July", start_station_name == "West St & Chambers St") %>% nrow()` rides, and (5) W 31 St & 7 Ave with `r citi_merged %>% filter(year == 2024, month == "July", start_station_name == "W 31 St & 7 Ave") %>% nrow()` rides.
@@ -507,7 +511,7 @@ citi_merged %>%
 
 Now that we have done sufficient data exploration, we can move into visualizing our data to investigate the effects of day of the week, month, and year on median ride duration. We can use the _summarize()_ function in order to calculate the median duration, and then pipe and use _ggplot()_ to create our graph:
 
-```{r citibike_viz}
+```{r ggp3_1_citibike_temp}
 
 # Using our merged CitiBike data set:
 
@@ -546,7 +550,7 @@ We can create one last figure representing a plot for 2024 data, when electric b
 
 For this question, since we are dealing with a categorical vs. contnuous variable, I originally thought to go for a box plot to get a better visualization of the effects of electric bikes in descriptive distribution metrics like median and IQ ranges. However, because of the diversity in observation values for duration, box plots were not the best. I then opted for a density plot instead to see the impact of month, membership, and bike type in the probability distribution of the duration, but it also did not have the best presentation. Finally, I saw a violin plot was the best-looking option and added an indicator for median since it is less sensitive to outliers:
 
-```{r duration_membership_biketype}
+```{r ggp3_2_duration_membership_biketype}
 
 # Using our merged CitiBike data set:
 
@@ -578,12 +582,13 @@ citi_merged %>%
   
 ```
 
-###### can I like Zoom into my data?
-
-**Figure Description:** From the generated figures, we can see that, in the year 2024, most ride durations were mostly in the 0-50 minute range.
+**Figure Description:** From the generated figures, we can see that in all categories, there is a strong skewness of our data to the right (with very high duration data points). Per the figure, this seems to be because most bike rides tend to be below 50 minutes, which makes sense for a bike service in New York City where people have the alternative of taking the train for longer commutes. Moreover, there seems to be a higher median ride duration and a wider distribution of ride duration for Casual riders compared to Member riders. This is specially pronounced for the Classic Bikes category, especially during the month of July, which makes sense since it is the cheaper option and may reflect differences in how casual riders use the service during the summer months. While this distinction remains for the Electric Bikes, it is not as pronounced, suggesting that the association between membership and duration of bike rides is different depending on the bike type used.
 
 
+PENDING ITEMS LIST:
 
-
+###### forcats??????
+###### left_join????
+###### can I like Zoom into my data on last one
 
 ## The End :) Have a wonderful day!
