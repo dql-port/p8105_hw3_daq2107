@@ -11,6 +11,9 @@ output: github_document
 
 library(p8105.datasets) # To load our data
 library(tidyverse) # For pipes and ggplot
+library(hexbin) # Using for Problem 1 plot
+library(patchwork) # For visualization
+library(ggridges) # For visualization
 
 ```
 
@@ -56,14 +59,14 @@ After analyzing the extent of the NA issue, we can go ahead and do some data cle
 
 ```{r weather_cleaning}
 
-# The 'day()', 'month()', and 'year()' functions I learned last semester during one my classes using the lubridate package, which is part of tidyverse. Notice also that I had to convert the precipitation, temperature, and snowfall variables to numeric due to errors:
+# The 'day()', 'month()', and 'year()' functions I learned last semester during one my classes using the lubridate package, which is part of tidyverse. Notice also that I had to convert my variables variables to numeric due to errors:
 
 ny_noaa_cleaned =
   ny_noaa %>% 
   mutate(
-    day = day(date), # Creating my day, month, year variables
-    month = month(date),
-    year = year(date),
+    day = as.numeric(day(date)), # Creating my day, month, year variables
+    month = as.numeric(month(date)),
+    year = as.numeric(year(date)),
     prcp = as.numeric(prcp)/10,
     snwd = as.numeric(snwd)/10,
     tmax = as.numeric(tmax)/10,
@@ -94,11 +97,139 @@ ny_noaa_cleaned %>%
 
 ```
 
-We can now proceed to assess which are the most commonly observed values for our snowfall variable:
+We can now proceed to assess which are the most commonly observed values for our snowfall variable. We can make use of the _count()_ function we have used in the past to get the counts of values in the _snow_ variable. Then, in a pipe, we can make use of the _arrange()_ function we learned in our data wrangling lecture to arrange our values in descending order:
 
 ```{r snowfall_common}
 
+ny_noaa_cleaned %>% 
+  count(snow) %>% 
+  arrange(desc(n)) # Using 'desc' to get output in descending order rather than ascending
+
 ```
+
+**ANSWER:** From the output, we can see that the most common value is 0 millimeters of snowfall, with `r ny_noaa_cleaned %>% filter(snow == 0) %>% nrow()` observations. This makes sense since snow does not fall for most days of the year in New York. We can see that the second most common value are our NAs, with `r ny_noaa_cleaned %>% filter(is.na(snow)) %>% nrow()` observations, which represent the weather stations that did not report any snowfall as a whole, so not even zeros. Moreover, we see that the third most common value when there is actual snowfall is 25 millimeters, with `r ny_noaa_cleaned %>% filter(snow == 25) %>% nrow()` observations, which is a relatively small amount of snow.
+
+### Two-Panel Plot: Average Max. Temperature
+
+After our initial cleaning and exploring, we can create a two-panel plot by making use of the _ggplot_ package, which is embedded withing the _tidyverse_. Since we are only asked to show the maximum temperatures for the months of July and January across different years, we can use the _filter()_ function along with out _group_by()_ function to group by different weather station as well as months and years. Moreover, to get our average maximum temperature, we can make use of _summarize()_ in the same fashion as we did above:
+
+```{r two_panel_plot}
+
+ny_noaa_cleaned %>% 
+  filter(month %in% c(7, 1)) %>% # Recall our months are in number format
+  mutate( # Making use of mutate like in HW2 assignment to relabel my months
+    month = case_match(
+      month,
+      1 ~ "January", # Matching '1' to 'January'
+      7 ~ "July"), # Matching '7' to 'July'
+    ) %>% 
+  group_by(year, month, id) %>% # Grouping by month, year, and ID
+  summarize(
+    mean_tmax = mean(tmax, na.rm = TRUE)
+  ) %>% 
+  ggplot(
+    aes(x = year, y = mean_tmax, group = id)) +
+   geom_point(aes(color = id), alpha = .2) + # Following example from lecture
+  geom_line(aes(color = id), alpha = .2) +
+  facet_grid(. ~ month) + 
+  theme(legend.position = "none") + # Had too many weather IDs
+  labs(title = "Average Max. Temperature by Weather Station Across Years (January & July)", 
+       x = "Year (1981-2010)",   # Adding labels like I did in HW1
+       y = "Average Max. Temperature (°C)",
+       caption = "Data from the 'p8105.datasets' package")
+  
+
+```
+############ horizontal facet? ask office hours...
+
+As we can see from the output, ggplot automatically removes the NA values for visualization purposes. Moreover, we can see that the plot shows a general (and expected) pattern where January is colder than July. We also see that most of the observations follow an apparent structure: they for conglomerate around 0°C for January, whereas they conglomerate around 28°C for July. There is some outlier variability, with a sudden drop on average max temperature around 1995 for January. There is not much variation for the July data.
+
+### Two-Panel Plot: Max. vs. Min Temperature
+
+We can now proceed to make an additional two-panel plot using the maximum and minimum temperature values (variables _tmax_ and _tmin_, respectively) with the entirety of our data set. We can do this in a fashion similar like above, but we will now utilize the _hexbin_ package to create graphs other than a scatter plot for the minimum vs. maximum temperature plot. For the snowfall plot, since we are dealing with an univariate plot, we can create a density distribution:
+
+```{r max_vs_min}
+
+# Following a similar process like above plus what we learned in lecture, we can create two data frames for each of the panels:
+
+# Min and max temperature plot (i):
+
+ggp_maxnmin = # Following naming conventions from lecture
+  ny_noaa_cleaned %>% # Note we don't need to modify our data in this one
+  ggplot(
+    aes(x = tmin, y = tmax)) +
+  geom_bin2d() + 
+  theme(legend.position = "bottom") +
+  labs(title = "Maximum vs. Minimum Temperature", 
+       x = "Minimum Temperature (°C)", 
+       y = "Maximum Temperature (°C)",
+       fill = "Observation Count",
+       caption = "Data from the 'p8105.datasets' package")
+  
+# Snowfall distribution plot (ii):
+
+# Since we need to make sure that the distribution of snowfall has no values less than zero or greater than 100, we can make use of the 'filter' function. Moreover, we can make use of the 'fill' argument to make the distinctions by year:
+
+ggp_snowdist =
+  ny_noaa_cleaned %>% 
+  filter(
+    snow > 0, snow < 100
+  ) %>% 
+  ggplot(
+    aes(x = as.factor(year), y = snow, fill = as.factor(year))) +
+  geom_boxplot(show.legend = FALSE) +
+  scale_x_discrete(breaks = seq(1981, 2010, by = 4)) + # I Googled this command
+  theme(legend.position = "bottom") +
+  labs(title = "Snowfall Distribution by Year", 
+       x = "Year", 
+       y = "Snowfall (mm)",
+       caption = "Data from the 'p8105.datasets' package")
+
+# Now, putting everything together:
+
+ggp_maxnmin + ggp_snowdist
+
+```
+
+######## thoughts on boxplot???
+
+**Description:** From the output, we can see that the left panel--corresponding to the Maximum vs. Minimum Temperature--shows a positive correlation between the two variables. This makes sense since we expect temperatures to not differ too much in a single day. Moreover, we see that in the case of the right panel, where we restricted to show between 0-100 mm of snowfall, the medians and IQ ranges remained consistent across the years. However, we also see that the years 1998, 2006, and 2010 show multiple outliers.
+
+## Problem 2: Accelerometer Data in the NHANES Study
+
+Our problem utilizes accelerometer data from the National Health and Nutrition Examination Survey (NHANES) research study.To start, we will load the data and proceed to tidy it. We must note that the data is in CSV format, so we need to use the _read_csv()_ function (part of tidyverse package) to import our file.
+
+```{r import_and_clean}
+
+# Loading each data set individually:
+
+accel_data =
+  read_csv(file = "./HW3_Data/nhanes_accel.csv",
+           na = c("","NA", ".") # We use this to make sure R understands these patterns as NA
+           ) %>% 
+  janitor::clean_names() # Cleaning names
+
+
+covar_data =
+  read_csv(file = "./HW3_Data/nhanes_covar.csv",
+           na = c("","NA", ".")
+           ) %>% 
+  janitor::clean_names() # Cleaning names
+
+
+# Doing a quick inspection of the data frames:
+
+head(accel_data, 5)
+head(covar_data, 5)
+  
+  
+  
+  
+
+
+```
+
+
 
 
 
@@ -128,26 +259,16 @@ Additionally, as per the assignment instructions, we need to select specific var
 
 
 
+
+
+
+
+
+
+
+
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
