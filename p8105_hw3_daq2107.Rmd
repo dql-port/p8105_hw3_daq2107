@@ -137,12 +137,11 @@ ny_noaa_cleaned %>%
        x = "Year (1981-2010)",   # Adding labels like I did in HW1
        y = "Average Max. Temperature (°C)",
        caption = "Data from the 'p8105.datasets' package")
-  
 
 ```
 ############ horizontal facet? ask office hours...
 
-As we can see from the output, ggplot automatically removes the NA values for visualization purposes. Moreover, we can see that the plot shows a general (and expected) pattern where January is colder than July. We also see that most of the observations follow an apparent structure: they for conglomerate around 0°C for January, whereas they conglomerate around 28°C for July. There is some outlier variability, with a sudden drop on average max temperature around 1995 for January. There is not much variation for the July data.
+As we can see from the output, ggplot automatically removes the NA values for visualization purposes. Moreover, we can see that the plot shows a general (and expected) pattern where January is colder than July. We also see that most of the observations follow an apparent structure: they for conglomerate around 0°C for January, whereas they conglomerate around 28°C for July. There is some outlier variability, with a sudden drop on average max temperature around 1995 for January. There is not much variation for the July data except for a data point around 1988.
 
 ### Two-Panel Plot: Max. vs. Min Temperature
 
@@ -387,9 +386,7 @@ daily_act_df %>%
 
 For this problem, we are utilizing Citi Bike data for New York City. Just like we did in the last problem, we will start by importing, cleaning, and tidying the data. Just like in the previous problem, we see that the data is in CSV format, so we need to use the _read_csv()_ function again to import our file. Also like in the previous problem, we need to import each of the four provided files one by one.
 
-Once imported, we can follow a process similar to what was done in Homework 2, where we used the _bind_rows()_ function to merge different files. However, we need to ensure we create a distinguishable identifier to ensure we know where the data is coming from. Considering that the only distinct difference between each set is the date, we can create variables for the year and month.
-
-########## is the separate year and month correct or should I do together?
+Once imported, we can follow a process similar to what was done in Homework 2, where we used the _bind_rows()_ function to merge different files. However, we need to ensure we create a distinguishable identifier to ensure we know where the data is coming from. Considering that the only distinct difference between each set is the date, we can create variables for the year and month. I had to keep these as separate because we filter only be year in another step below (learned the hard way):
 
 ```{r importing_cleaning_bikes}
 
@@ -545,7 +542,9 @@ In terms of days of the week, we see that January 2020, July 2020, and July 2024
 
 ### Visualizing Ride Duration Distribution by 2024 Membership and Bike Type
 
-We can create one last figure representing a plot for 2024 data, when electric bikes were more widely available compared to 2020. We can follow the same approach we have been using in previous sections. For this question, I originally thought to go for a box plot to get a better visualization of the effects of electric bikes in descriptive distribution metrics like mean, median, and IQ ranges. However, because of the diversity in observation values for duration, I opted for a density plot instead to see the impact of month, membership, and bike type in the probability distribution of the duration:
+We can create one last figure representing a plot for 2024 data, when electric bikes were more widely available compared to 2020. We can follow the same approach we have been using in previous sections.
+
+For this question, since we are dealing with a categorical vs. contnuous variable, I originally thought to go for a box plot to get a better visualization of the effects of electric bikes in descriptive distribution metrics like median and IQ ranges. However, because of the diversity in observation values for duration, box plots were not the best. I then opted for a density plot instead to see the impact of month, membership, and bike type in the probability distribution of the duration, but it also did not have the best presentation. Finally, I saw a violin plot was the best-looking option and added an indicator for median since it is less sensitive to outliers:
 
 ```{r duration_membership_biketype}
 
@@ -554,7 +553,7 @@ We can create one last figure representing a plot for 2024 data, when electric b
 citi_merged %>% 
   filter(year == 2024) %>% # Filtering only for 2024 data
   mutate(
-    month = case_match( # Using case_match to create better labels
+    rideable_type = case_match( # Using case_match to create better labels
       rideable_type,
       "classic_bike" ~ "Classic Bike", 
       "electric_bike" ~ "Electric Bike"),
@@ -564,20 +563,24 @@ citi_merged %>%
       "member" ~ "Member"),
     ) %>% 
   ggplot(
-    aes(x = month, y = duration, color = member_casual, group = member_casual)) + #Added group for line geom
-  geom_boxplot() + 
+    aes(x = month, y = duration, fill = month)) + # Duration on 'x' since density plot
+    geom_violin(alpha = .5) + 
+  stat_summary(fun = "median", color = "red") + #Visualizing median
   theme(legend.position = "bottom",
-        plot.title = element_text(hjust = 0.5),) + # Centering my title
-  facet_grid(. ~ rideable_type) + 
+        plot.title = element_text(hjust = 0.5)) + # Centering my title
+  facet_grid(member_casual ~ rideable_type) + 
   labs(title = "Effects of CitiBike Membership Status and\nBike Ride in New York City (2024)", 
-       x = "Month", 
-       y = "Bike Ride Median Duration (minutes)",
-       color = "Month",
+       x = "Month (Year 2024)", 
+       y = "Bike Ride Duration (Minutes)",
+       fill = "Month",
+       legend = "Month",
        caption = "Data obtained from CitiBike through P8105 course site.")
   
 ```
 
-###### confirm if boxplot best choice
+###### can I like Zoom into my data?
+
+**Figure Description:** From the generated figures, we can see that, in the year 2024, most ride durations were mostly in the 0-50 minute range.
 
 
 
