@@ -192,6 +192,7 @@ ggp_maxnmin + ggp_snowdist
 ```
 
 ######## thoughts on boxplot???
+######## ask about googling commands?
 
 **Description:** From the output, we can see that the left panel--corresponding to the Maximum vs. Minimum Temperature--shows a positive correlation between the two variables. This makes sense since we expect temperatures to not differ too much in a single day. Moreover, we see that in the case of the right panel, where we restricted to show between 0-100 mm of snowfall, the medians and IQ ranges remained consistent across the years. However, we also see that the years 1998, 2006, and 2010 show multiple outliers.
 
@@ -295,7 +296,7 @@ From our cleaned data frame, we can now produce a new variable representing the 
 total_act_df =
   nhanes_merged %>% 
   pivot_longer(
-    min1:min1140, # Checked how many minutes are in a day to obtain this
+    min1:min1440, # Checked how many minutes are in a day to obtain this
     names_to = "minute",
     values_to = "MIMS" # Using the naming convention from the instructions and article
   ) %>% 
@@ -309,19 +310,82 @@ head(total_act_df, 5)
 
 ```
 
+### Total Activity Across Age, Sex, and Education Groups
+
 We successfully created our total activity variable and kept our demographic variables! We can now proceed to create our total activity vs. age graph while comparing the sexes and having separate panels for each education level. We will, of course, make use of ggplot for this:
 
 ```{r}
 
+total_act_df %>% 
+  ggplot(
+    aes(x = age, y = total_act, color = sex)) +
+  geom_point(aes(color = sex), alpha = 0.5) + # Grabbed from lecture example
+  geom_smooth(se = FALSE) +
+  theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5),) + # Googled how to center my title
+  facet_grid(. ~ education) + 
+  labs(title = "Total Activity Trend Across Ages (Subdivided by Sex and Education Level)", 
+       x = "Age", 
+       y = "Total 24-hour Activity (MIMS)",
+       color = "Sex",
+       caption = "Data publicly available from NHANES study.")
+
 ```
 
+**Plot Description:** The graphs produced clearly demonstrate a negative correlation between total activity (in MIMS) and age, where people become more sedentary as they become older, irrespective of age, sex, or education level. Moreover, we see slight increases in activity after the age of 60, potentially due to post-retirement activities.
+
+However, we can see that the decline in total activity is more pronounced for those with an education level less than high school, with female individuals in this group becoming more sedentary compared to males after the age of 40. Moreover, those with an education level more than high school show less pronounced decline in physical activity, gradually decreasing after the age of 50. It is also interesting to note that in both education levels for high school equivalent and more than high school, female individuals tend to be relatively more active compare to men.
+
+### Activity Throughout the Day
+
+In a similar way like how we created the data frame for total activity, we can now group our minutes by each participant to show the differences in activity in a single day. We will still make use of _ggplot_ to create our plot similarly like in the last section:
+
+```{r in_a_days_life}
+
+daily_act_df =
+  nhanes_merged %>% 
+  pivot_longer(
+    min1:min1440, # Total minutes in a day
+    names_to = "minute",
+    names_prefix = "min", # Removing the prefix
+    values_to = "MIMS" # Using the naming convention from the instructions and article
+  ) %>% 
+  mutate(minute = as.numeric(minute)) %>%  # Converting to numeric
+  group_by(sex, education, minute) %>% # Keeping the variables we need
+  summarize(avg_MIMS = mean(MIMS, na.rm = TRUE)) # Creating average MIMS activity for each minute
+ 
+
+# Inspecting the data frame:
+
+head(daily_act_df, 5)
+  
+# We can now create our plot in a similar fashion as before:
+  
+daily_act_df %>% 
+  ggplot(
+    aes(x = minute, y = avg_MIMS, color = sex)) +
+  geom_point(aes(color = sex), alpha = 0.05) + # Grabbed from lecture example
+  geom_smooth(se = FALSE) +
+  theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5),) + # Centering my title
+  facet_grid(. ~ education) + 
+  labs(title = "Accelerometer Activity in 24 Hours (Subdivided by Sex and Education Level)", 
+       x = "Minute in the Day", 
+       y = "Average Activity (MIMS)",
+       color = "Sex",
+       caption = "Data publicly available from NHANES study.")
 
 
 
 
+```
+######### should I keep geom_point or maybe move to geom_line?
 
+**Plot Description:** The graphs produced clearly demonstrate a general trend: there is slight activity in the first minutes of the day (late night), which one may speculate it is due to not having reached deep sleep yet or just getting into bed. Then, approximately around the minute 400 (corresponding to the 6-7 AM time mark) all groups have a drastic increase in activity corresponding to the start of their day. This pattern persists irrespective of sex or education level. However, we can see that the group with education level less than high school has a higher average MIMS in the first hours of the day compared to the other education groups. Moreover, female individuals seem to have slightly more activity throughout the day compared to males in all education groups. It is also intersting to highlight that the those with ecucation more than high school have a plateau in their average activity for most of the day, potentially due to more sedentary jobs, compared to those with less than high school education.
 
+## Problem 3: Citi Bike Data
 
+Our problem utilizes accelerometer data from the National Health and Nutrition Examination Survey (NHANES) research study.To start, we will load the data and proceed to tidy it. We must note that the data is in CSV format, so we need to use the _read_csv()_ function (part of tidyverse package) to import our file. From man
 
 
 ## The End :) Have a wonderful day!
