@@ -504,7 +504,14 @@ citi_merged %>%
 
 ```
 
-**Table Description:** From the table created, we see 
+**Table Description:** From the table created, we see that the the most frequented stations to start rides from in July 2024 were, in this order: (1) Pier 61 at Chelsea Piers with `r citi_merged %>% filter(year == 2024, month == "July", start_station_name == "Pier 61 at Chelsea Piers") %>% nrow()` rides, (2) University Pl & E 14 St with `r citi_merged %>% filter(year == 2024, month == "July", start_station_name == "University Pl & E 14 St") %>% nrow()` rides, (3) W 21 St & 6 Ave with `r citi_merged %>% filter(year == 2024, month == "July", start_station_name == "W 21 St & 6 Ave") %>% nrow()` rides, (4) West St & Chambers St with `r citi_merged %>% filter(year == 2024, month == "July", start_station_name == "West St & Chambers St") %>% nrow()` rides, and (5) W 31 St & 7 Ave with `r citi_merged %>% filter(year == 2024, month == "July", start_station_name == "W 31 St & 7 Ave") %>% nrow()` rides.
+
+### Visualizing CitiBike Data
+
+investigate the effects of day of the week, month, and year on median ride duration.
+
+
+
 
 
 
