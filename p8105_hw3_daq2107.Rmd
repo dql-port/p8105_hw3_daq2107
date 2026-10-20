@@ -197,7 +197,9 @@ ggp_maxnmin + ggp_snowdist
 
 ## Problem 2: Accelerometer Data in the NHANES Study
 
-Our problem utilizes accelerometer data from the National Health and Nutrition Examination Survey (NHANES) research study.To start, we will load the data and proceed to tidy it. We must note that the data is in CSV format, so we need to use the _read_csv()_ function (part of tidyverse package) to import our file.
+Our problem utilizes accelerometer data from the National Health and Nutrition Examination Survey (NHANES) research study.To start, we will load the data and proceed to tidy it. We must note that the data is in CSV format, so we need to use the _read_csv()_ function (part of tidyverse package) to import our file. From manual inspection, I saw that we needed to skip 4 rows in the demographic data CSV in order to get to our data.
+
+Moreover, we use the _filter()_ function to only include participants who are 21 years of age or older, and can use _drop_na()_ in order to drop missing values for the demographic variables. Moreover, the demographic data CSV contained the numeric codes utilized for each variable, so I relabeled to give appropriate names using _case_match()_ like we did in Problem 1, and we convert to ordered factors:
 
 ```{r import_and_clean}
 
@@ -212,20 +214,104 @@ accel_data =
 
 covar_data =
   read_csv(file = "./HW3_Data/nhanes_covar.csv",
-           na = c("","NA", ".")
+           na = c("","NA", "."),
+           skip = 4, # Skipping first four rows
            ) %>% 
-  janitor::clean_names() # Cleaning names
+  janitor::clean_names() %>% # Cleaning names
+  filter(
+    age >= 21 #Only including people 21 and older
+  ) %>% 
+  drop_na(sex, age, bmi, education) %>%  #Dropping observations with missing values
+  mutate(
+    education = case_match(
+      education,
+      1 ~ "Less than high school", # using exact names from CSV
+      2 ~ "High school equivalent",
+      3 ~ "More than high school"),
+    
+    sex = case_match(
+      sex,
+      1 ~ "Male", 
+      2 ~ "Female")
+    ) %>% 
+  mutate( # Now we need to make factors and organize
+    sex = as.factor(sex),
+    education = factor(education, levels = c("Less than high school", "High school equivalent", "More than high school"))
+  )
 
 
-# Doing a quick inspection of the data frames:
+# Used these lines of code to continuously inspect my data frame as I was going about adding cleaning steps in my pipes:
 
 head(accel_data, 5)
 head(covar_data, 5)
-  
-  
-  
-  
 
+```
+####### left or innner joinn????
+
+
+After we tidied our data, we can now proceed to merge it. For this, we will make use of the common _SEQN_ variable that is found in both data frames. From the data wrangling lectures, we know that we can use the _left_join()_ function to do this so that we can preserve the observations from the cleaned demographic data:
+
+```{r merging_dfs}
+
+nhanes_merged = 
+  covar_data %>% #Starting from the cleaned demographic data
+  left_join(accel_data, by = "seqn")
+
+# Checking the new data frame:
+
+head(nhanes_merged, 5)
+
+# It worked!
+
+```
+
+### Producing Reader-Friendly Table
+
+To create our table, we can make use of the _pivot_wider()_ function that we covered in our data wrangling lectures. We can use the _count()_ function we used in Problem 1 to obtain the counts of men and women in each education category. Then, as we saw in the EDA lecture, we use _knitr::kable()_ to make this reader-friendly:
+
+```{r friendly_table}
+
+nhanes_merged %>% 
+  group_by(education, sex) %>% # Grouping by the variables we need
+  summarize(
+    n = n() # getting our counts
+  ) %>% 
+  pivot_wider(
+    names_from = sex,
+    values_from = n
+  ) %>% 
+  knitr::kable(col.names = c("Education", "Female", "Male")) #Looked up how to modify headers
+
+```
+
+**Table Description:** From the table, we can see that the individuals in our sample who have an education level corresponding to less than high school are evenly split between males and females, with `r nhanes_merged %>% filter(education == "Less than high school", sex == "Male") %>% nrow()` males and `r nhanes_merged %>% filter(education == "Less than high school", sex == "Female") %>% nrow()` females. However, males dominate in the high school equivalent level, with `r nhanes_merged %>% filter(education == "High school equivalent", sex == "Male") %>% nrow()` males and `r nhanes_merged %>% filter(education == "High school equivalent", sex == "Female") %>% nrow()` females. Lastly, once we reach upper levels of education, females take the lead in the more than high school category, with `r nhanes_merged %>% filter(education == "More than high school", sex == "Male") %>% nrow()` males and `r nhanes_merged %>% filter(education == "More than high school", sex == "Female") %>% nrow()` females.
+
+### Total Activity per Participant
+
+From our cleaned data frame, we can now produce a new variable representing the total activity from each of the participants in the sample. Quick visual inspection of the accelerometer data reveals that it was collected by the minute. Therefore, we can make use of the _pivot_longer()_ function we covered in our data wrangling sessions and used in Homework 2. We also need to recall that, based on the article provided by Prof. Goldsmith, we use the unit _MIMS_, which stands for _Monitor-Independent Movement Summary unit (MIMS-unit)_, to refer to our values for each minute of a 24-hour day starting at midnight:
+
+```{r total_activity}
+
+total_act_df =
+  nhanes_merged %>% 
+  pivot_longer(
+    min1:min1140, # Checked how many minutes are in a day to obtain this
+    names_to = "minute",
+    values_to = "MIMS" # Using the naming convention from the instructions and article
+  ) %>% 
+  group_by(seqn, sex, age, bmi, education) %>% # Grouping minute rows and keeping demographics
+  summarize(total_act = sum(MIMS, na.rm = TRUE) # Getting our total activity by summing day MIMS
+  )
+    
+# We now quickly inspect the new data frame:
+
+head(total_act_df, 5)
+
+```
+
+We successfully created our total activity variable and kept our demographic variables! We can now proceed to create our total activity vs. age graph while comparing the sexes and having separate panels for each education level. We will, of course, make use of ggplot for this:
+
+```{r}
 
 ```
 
@@ -238,37 +324,4 @@ head(covar_data, 5)
 
 
 
-
-
-the stations' name, latitude, longitude, as well as the route numbers. The dataset also contains some other infrastructure and managerial information, such as ADA compliance, staffing status, ticket vending, entrance type, among others.
-
-
-
-
-
-
-
-
-
-
-
-
-We first need to recognize that the _NYC Transit_ data is coming from a _CSV_ file. So we need to use the _read_csv()_ function (part of tidyverse package) to import our file and then use the 'janitor' package to clean the names of columns which, after inspecting the file, contains complicated characters like uppercase letters. Notice also in the code below we are setting up a relative path to our data.
-
-Additionally, as per the assignment instructions, we need to select specific variables to keep. I used the _head()_ function to take a look at the variable names and then used the _select()_ function to choose the variables to keep. We can also convert the _entry_ variable into a logical variable using the _case_match()_ function (part of _dplyr_ package in _tidyverse_) on the same code using the pipe operator:
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+## The End :) Have a wonderful day!
