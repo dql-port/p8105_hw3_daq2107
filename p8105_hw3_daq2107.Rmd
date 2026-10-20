@@ -536,7 +536,6 @@ citi_merged %>%
        color = "Month",
        caption = "Data publicly available from CitiBike. Obtained through P8105 course site.")
   
-
 ```
 
 **Figure Description:** From the generated figures, we can see that in both 2020, the month of January had a smaller median bike ride duration in comparison to July. This is sensical given the cold in the winter months, making it less tolerable to spend prolonged periods of time outdoors.
@@ -546,8 +545,39 @@ In terms of days of the week, we see that January 2020, July 2020, and July 2024
 
 ### Visualizing Ride Duration Distribution by 2024 Membership and Bike Type
 
-We can create one last figure representing a distribution plot for 2024 data, when electric bikes were more widely available compared to 2020. 
+We can create one last figure representing a plot for 2024 data, when electric bikes were more widely available compared to 2020. We can follow the same approach we have been using in previous sections. For this question, I originally thought to go for a box plot to get a better visualization of the effects of electric bikes in descriptive distribution metrics like mean, median, and IQ ranges. However, because of the diversity in observation values for duration, I opted for a density plot instead to see the impact of month, membership, and bike type in the probability distribution of the duration:
 
+```{r duration_membership_biketype}
+
+# Using our merged CitiBike data set:
+
+citi_merged %>% 
+  filter(year == 2024) %>% # Filtering only for 2024 data
+  mutate(
+    month = case_match( # Using case_match to create better labels
+      rideable_type,
+      "classic_bike" ~ "Classic Bike", 
+      "electric_bike" ~ "Electric Bike"),
+    member_casual = case_match(
+      member_casual,
+      "casual" ~ "Casual", 
+      "member" ~ "Member"),
+    ) %>% 
+  ggplot(
+    aes(x = month, y = duration, color = member_casual, group = member_casual)) + #Added group for line geom
+  geom_boxplot() + 
+  theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5),) + # Centering my title
+  facet_grid(. ~ rideable_type) + 
+  labs(title = "Effects of CitiBike Membership Status and\nBike Ride in New York City (2024)", 
+       x = "Month", 
+       y = "Bike Ride Median Duration (minutes)",
+       color = "Month",
+       caption = "Data obtained from CitiBike through P8105 course site.")
+  
+```
+
+###### confirm if boxplot best choice
 
 
 
