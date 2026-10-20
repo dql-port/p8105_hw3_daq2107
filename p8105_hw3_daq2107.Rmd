@@ -508,8 +508,45 @@ citi_merged %>%
 
 ### Visualizing CitiBike Data
 
-investigate the effects of day of the week, month, and year on median ride duration.
+Now that we have done sufficient data exploration, we can move into visualizing our data to investigate the effects of day of the week, month, and year on median ride duration. We can use the _summarize()_ function in order to calculate the median duration, and then pipe and use _ggplot()_ to create our graph:
 
+```{r citibike_viz}
+
+# Using our merged CitiBike data set:
+
+citi_merged %>% 
+  mutate(
+    weekdays = factor(  # Had to convert to factor because weekdays was not organized before
+      weekdays,
+      levels = c("Monday", "Tuesday", "Wednesday","Thursday", "Friday", "Saturday", "Sunday"
+      ))) %>% 
+  group_by(month, year, weekdays) %>% # Grouping by the variables that we need
+  summarize(
+    median_dur = median(duration, na.rm = TRUE)) %>% # Calculating the median duration
+  ggplot(
+    aes(x = weekdays, y = median_dur, color = month, group = month)) + #Added group for line geom
+  geom_point(aes(color = month)) + # Grabbed from lecture example
+  geom_line() + # Line instead of smooth since categoricaal variable
+  theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5),) + # Centering my title
+  facet_grid(. ~ year) + 
+  labs(title = "Effects of Temporal Variables on CitiBike\nRide Duration in New York City (2020 & 2024)", 
+       x = "Days of the Week", 
+       y = "Bike Ride Median Duration (minutes)",
+       color = "Month",
+       caption = "Data publicly available from CitiBike. Obtained through P8105 course site.")
+  
+
+```
+
+**Figure Description:** From the generated figures, we can see that in both 2020, the month of January had a smaller median bike ride duration in comparison to July. This is sensical given the cold in the winter months, making it less tolerable to spend prolonged periods of time outdoors.
+Moreover, we see that the median bike ride duration for either month was higher in 2020 compared to 2024, where July 2024 was particularly higher. This may have been due to the novelty and excitement around the service in 2020, as well as the effects of the COVID-19 pandemic which, after months of lock down, created an incentive for people to spend more time outside. The drop in the median values in 2024 may be due to increase in ride fares.
+
+In terms of days of the week, we see that January 2020, July 2020, and July 2024 have increases in median bike ride duration for the weekend days. Interestingly, this is not the case for Sundays in July 2024. We can speculate that, in the colder months, people may avoid weekend bike rides since they have the possibility to stay in rather than attending work or social gatherings.
+
+### Visualizing Ride Duration Distribution by 2024 Membership and Bike Type
+
+We can create one last figure representing a distribution plot for 2024 data, when electric bikes were more widely available compared to 2020. 
 
 
 
