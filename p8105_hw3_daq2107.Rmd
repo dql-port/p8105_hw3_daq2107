@@ -587,7 +587,6 @@ citi_merged %>%
 
 PENDING ITEMS LIST:
 
-###### forcats??????
 ###### left_join????
 ###### can I like Zoom into my data on last one
 
