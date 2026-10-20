@@ -1,0 +1,153 @@
+---
+title: "p8105_hw3_daq2107"
+author: "Diego A. Quintana Licona"
+date: "2026-10-19"
+output: github_document
+---
+
+## Loading necessary libraries for this assignment:
+
+```{r libraries}
+
+library(p8105.datasets) # To load our data
+library(tidyverse) # For pipes and ggplot
+
+```
+
+## Problem 1: National Oceanic and Atmospheric Administration (NOAA) Data Set
+
+Our problem utilizes data from the NY National Oceanic and Atmospheric Administration (NOAA) data.To start, we will load and explore the data. Per the instructions, our data is obtained from our course's _p8105.datasets_ package, loaded above. We can then use the _head()_, _nrow()_, and _ncol()_ functions to explore our variables:
+
+```{r loading_exploring}
+
+# Loading the NOAA data:
+
+data("ny_noaa")
+
+# Exploring our data set:
+
+head(ny_noaa) # Obtaining the names of the variables in the data set
+str(ny_noaa) # Obtaining the data types of each variable
+
+# We can also look at the extent of NA values in each variable using a pipe with the summarize() function:
+
+##### maybe clean up with across()
+
+ny_noaa %>% 
+  summarize(
+    prop_na_id = mean(is.na(id)), # Gets me the proportion of NAs in each variable
+    prop_na_date = mean(is.na(date)),
+    prop_na_prcp = mean(is.na(prcp)),
+    prop_na_snow = mean(is.na(snow)), 
+    prop_na_snwd = mean(is.na(snwd)),
+    prop_na_tmax = mean(is.na(tmax)),
+    prop_na_tmin = mean(is.na(tmin))
+  )
+
+```
+
+**Dataset Description:** The dataset (previously cleaned for our class by Prof. Goldsmith) is comprised of `r nrow(ny_noaa)` observations and the `r ncol(ny_noaa)` variables. The variables contain information on the weather station ID (_id_; character type), date of observation (_date_; date variable), precipitation in tenths of millimeter (_prcp_; integer variable), millimeter of snowfall (_snow_; integer variable), millimeter of snow dept (_snwd_; integer variable), maximum temperature in tenths of degrees Celsius (_tmax_; character variable), and minimum temperature in tenths of degrees Celsius (_tmin_; character variable).
+
+Regarding missing values (NAs), we see that there are none for our ID and Date variables; however, there is a considerable amount of missing data for each of the remaining 5 variables, with `r round(mean(is.na(ny_noaa$prcp))*100, 2)`% of observations missing in _prcp_, `r round(mean(is.na(ny_noaa$snow))*100, 2)`% of observations missing in _snow_, `r round(mean(is.na(ny_noaa$snwd))*100, 2)`% of observations missing in _snwd_, `r round(mean(is.na(ny_noaa$tmax))*100, 2)`% of observations missing in _tmax_, and `r round(mean(is.na(ny_noaa$tmin))*100, 2)`% of observations missing in _tmin_. This is particularly concerning for the precipitation and maximum temperature variables since it represents about half of the observations.
+
+### Cleaning The Data
+
+After analyzing the extent of the NA issue, we can go ahead and do some data cleaning. We first construct new day, month, and year variables from our already existing _date_ variable using our reliable _mutate()_ function. Second, in order to convert our precipitation, temperature, and snowfall variables into reasonable units, we need to recognize that these variables are given in tenths of their units of measure. Therefore, we can just take advantage of the _mutate()_ pipe and do simple division by 10. We can leave our _snow_ variable as is since it is already in regular millimeters:
+
+```{r weather_cleaning}
+
+# The 'day()', 'month()', and 'year()' functions I learned last semester during one my classes using the lubridate package, which is part of tidyverse. Notice also that I had to convert the precipitation, temperature, and snowfall variables to numeric due to errors:
+
+ny_noaa_cleaned =
+  ny_noaa %>% 
+  mutate(
+    day = day(date), # Creating my day, month, year variables
+    month = month(date),
+    year = year(date),
+    prcp = as.numeric(prcp)/10,
+    snwd = as.numeric(snwd)/10,
+    tmax = as.numeric(tmax)/10,
+    tmin = as.numeric(tmin)/10
+  )
+
+# Checking the newly created variables:
+
+# Checking the dates:
+
+ny_noaa_cleaned %>% 
+  select(day, month, year) %>% 
+  head()
+
+# From the output of this quick check, the code worked :)
+
+# Now, checking the numerical variables:
+
+ny_noaa_cleaned %>% 
+  summarize(
+    mean_prcp = mean(prcp, na.rm = TRUE), # Removing my NAs for quick check
+    mean_snow = mean(snow, na.rm = TRUE),
+    mean_tmax = mean(tmax, na.rm = TRUE),
+    mean_tmin = mean(tmin, na.rm = TRUE)
+  )
+
+# The mean values appear in decent units, so our conversion also worked.
+
+```
+
+We can now proceed to assess which are the most commonly observed values for our snowfall variable:
+
+```{r snowfall_common}
+
+```
+
+
+
+
+
+
+
+
+
+
+the stations' name, latitude, longitude, as well as the route numbers. The dataset also contains some other infrastructure and managerial information, such as ADA compliance, staffing status, ticket vending, entrance type, among others.
+
+
+
+
+
+
+
+
+
+
+
+
+We first need to recognize that the _NYC Transit_ data is coming from a _CSV_ file. So we need to use the _read_csv()_ function (part of tidyverse package) to import our file and then use the 'janitor' package to clean the names of columns which, after inspecting the file, contains complicated characters like uppercase letters. Notice also in the code below we are setting up a relative path to our data.
+
+Additionally, as per the assignment instructions, we need to select specific variables to keep. I used the _head()_ function to take a look at the variable names and then used the _select()_ function to choose the variables to keep. We can also convert the _entry_ variable into a logical variable using the _case_match()_ function (part of _dplyr_ package in _tidyverse_) on the same code using the pipe operator:
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
