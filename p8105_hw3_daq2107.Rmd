@@ -381,11 +381,132 @@ daily_act_df %>%
 ```
 ######### should I keep geom_point or maybe move to geom_line?
 
-**Plot Description:** The graphs produced clearly demonstrate a general trend: there is slight activity in the first minutes of the day (late night), which one may speculate it is due to not having reached deep sleep yet or just getting into bed. Then, approximately around the minute 400 (corresponding to the 6-7 AM time mark) all groups have a drastic increase in activity corresponding to the start of their day. This pattern persists irrespective of sex or education level. However, we can see that the group with education level less than high school has a higher average MIMS in the first hours of the day compared to the other education groups. Moreover, female individuals seem to have slightly more activity throughout the day compared to males in all education groups. It is also intersting to highlight that the those with ecucation more than high school have a plateau in their average activity for most of the day, potentially due to more sedentary jobs, compared to those with less than high school education.
+**Plot Description:** The graphs produced clearly demonstrate a general trend: there is slight activity in the first minutes of the day (late night), which one may speculate it is due to not having reached deep sleep yet or just getting into bed. Then, approximately around the minute 400 (corresponding to the 6-7 AM time mark) all groups have a drastic increase in activity corresponding to the start of their day. This pattern persists irrespective of sex or education level. However, we can see that the group with education level less than high school has a higher average MIMS in the first hours of the day compared to the other education groups. Moreover, female individuals seem to have slightly more activity throughout the day compared to males in all education groups. It is also interesting to highlight that the those with ecucation more than high school have a plateau in their average activity for most of the day, potentially due to more sedentary jobs, compared to those with less than high school education.
 
 ## Problem 3: Citi Bike Data
 
-Our problem utilizes accelerometer data from the National Health and Nutrition Examination Survey (NHANES) research study.To start, we will load the data and proceed to tidy it. We must note that the data is in CSV format, so we need to use the _read_csv()_ function (part of tidyverse package) to import our file. From man
+For this problem, we are utilizing Citi Bike data for New York City. Just like we did in the last problem, we will start by importing, cleaning, and tidying the data. Just like in the previous problem, we see that the data is in CSV format, so we need to use the _read_csv()_ function again to import our file. Also like in the previous problem, we need to import each of the four provided files one by one.
+
+Once imported, we can follow a process similar to what was done in Homework 2, where we used the _bind_rows()_ function to merge different files. However, we need to ensure we create a distinguishable identifier to ensure we know where the data is coming from. Considering that the only distinct difference between each set is the date, we can create variables for the year and month.
+
+########## is the separate year and month correct or should I do together?
+
+```{r importing_cleaning_bikes}
+
+# Loading each data set individually and cleaning names:
+
+jan20_citi =
+  read_csv(file = "./HW3_Data/citibike/Jan 2020 Citi.csv",
+           na = c("","NA", ".") # We use this to make sure R understands these patterns as NA
+           ) %>% 
+  janitor::clean_names() # Cleaning names
+
+jan24_citi =
+  read_csv(file = "./HW3_Data/citibike/Jan 2024 Citi.csv",
+           na = c("","NA", ".") # We use this to make sure R understands these patterns as NA
+           ) %>% 
+  janitor::clean_names() # Cleaning names
+
+jul20_citi =
+  read_csv(file = "./HW3_Data/citibike/July 2020 Citi.csv",
+           na = c("","NA", ".") # We use this to make sure R understands these patterns as NA
+           ) %>% 
+  janitor::clean_names() # Cleaning names
+
+jul24_citi =
+  read_csv(file = "./HW3_Data/citibike/July 2024 Citi.csv",
+           na = c("","NA", ".") # We use this to make sure R understands these patterns as NA
+           ) %>% 
+  janitor::clean_names() # Cleaning names
+
+# Checking everything looks good:
+
+head(jan20_citi, 5)
+head(jul20_citi, 5)
+head(jan24_citi, 5)
+head(jul24_citi, 5)
+
+# Looks good! Now we can mutate to add year and month variables.
+
+jan20_citi =
+  jan20_citi %>% 
+  mutate(month = "January", year = 2020)
+
+jul20_citi =
+  jul20_citi %>% 
+  mutate(month = "July", year = 2020)
+
+jan24_citi =
+  jan24_citi %>% 
+  mutate(month = "January", year = 2024)
+
+jul24_citi =
+  jul24_citi %>% 
+  mutate(month = "July", year = 2024)
+
+# Now, we need to merge these four different data frames using 'bind_rows()'_
+
+citi_merged = bind_rows(jan20_citi, jul20_citi, jan24_citi, jul24_citi)
+
+#Checking:
+
+head(citi_merged, 5)
+
+# Voila! All good :)
+  
+```
+####### can I use dollar signs for inline R?
+
+
+**Data Set Description:** From our merge, we now have a data frame with `r nrow(citi_merged)` observations and `r ncol(citi_merged)` variables using data corresponding to 1% of the NYC rides in four months from two different years: January and July in 2020 and 2024. Moreover, the variables include a distinct ride ID (_ride_id_), the type of bike used (_rideable_type_), the day of the which the bike ride took place (_weekdays_), the duration of the ride in minutes (_duration_), the station from which the ride started (_start_station_name_), a binary variable to describe the rider as member or casual rider (_member_casual_), and our newly created month and year variables.
+
+As some interesting facts, on average, bikes rides in this data set lasted `r round(mean(citi_merged$duration, na.rm = TRUE), 2)` minutes, and the day of the week with the most rides was `r citi_merged %>% count(weekdays, sort = TRUE) %>% slice(1) %>% pull(weekdays)`.
+
+### Producing Reader-Friendly Table
+
+Following the same strategy as in the last problem, we can make use of the _pivot_wider()_ function and then use _count()_ to obtain the total number of rides in each combination of year and month, separated by casual riders and CitiBike members. We use _knitr::kable()_ again to make this reader-friendly:
+
+```{r friendly_bikes}
+
+citi_merged %>% 
+  group_by(month, year, member_casual) %>% # Grouping by the variables we need
+  summarize(
+    n = n(), # getting our counts
+    .groups = "drop_last" # R told me to add to remove a message
+  ) %>% 
+  pivot_wider(
+    names_from = member_casual,
+    values_from = n
+  ) %>% 
+  knitr::kable(col.names = c("Month", "Year", "Casual", "Member"))
+
+
+```
+
+####### how much should we be describing in general?
+
+
+**Table Description:** From the table created, we see that the July months have a significantly higher number of bike rides compared to January of the same year. This is expected since the summer months are warmer and more people do outdoor activities. Moreover, we see there is an increase in both casual and member riders between 2020 and 2024, by about `r round(((nrow(filter(citi_merged, year == 2024, member_casual == "casual"))/nrow(filter(citi_merged, year == 2020, member_casual == "casual")))-1)*100, 2)`% in casual riders and `r round(((nrow(filter(citi_merged, year == 2024, member_casual == "member"))/nrow(filter(citi_merged, year == 2020, member_casual == "member")))-1)*100, 2)`% in member riders.
+
+### Popular CitiBike Stations
+
+Another interesting question: which were the most popular stations in New York City during July 2024? To answer this, we can use the same strategy as in Problem 1 to obtain a count of for each unique station and then using _arrange()_ to obtain the results in descending order. We can then use _knitr::kable()_ again to produce our table:
+
+```{r}
+
+citi_merged %>% 
+  filter(month == "July", year == 2024) %>% # Filtering for July 2024 results
+  group_by(start_station_name) %>% 
+  count(start_station_name) %>% 
+  drop_na() %>%  # Removing missing values
+  arrange(desc(n)) %>% # Using 'desc' to get output in descending order rather than ascending
+  head(5) # Getting the top five results
+
+```
+
+**Table Description:** From the table created, we see 
+
+
 
 
 ## The End :) Have a wonderful day!
