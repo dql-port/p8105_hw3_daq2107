@@ -247,8 +247,7 @@ After we tidied our data, we can now proceed to merge it. For this, we will make
 ```{r merging_dfs}
 
 nhanes_merged = 
-  covar_data %>% #Starting from the cleaned demographic data
-  left_join(accel_data, by = "seqn")
+  left_join(covar_data, accel_data, by = "seqn") #Starting from the cleaned demographic data
 
 # Checking the new data frame:
 
@@ -352,7 +351,7 @@ However, we can see that the decline in total activity is more pronounced for th
 
 ### Activity Throughout the Day
 
-In a similar way to how we created the data frame for total activity, we can now group our minutes by each participant to show the differences in activity in a single day. We will still make use of _ggplot_ to create our plot similarly to the last section:
+In a similar way to how we created the data frame for total activity, we can now retain each minute's observations for each participant to show the differences in activity in a single day. **I had originally thought of plotting the minute activity averages for better visualization, but after consulting with one of the course's TA, I was instructed to keep the lines for each participant and just make sure to include the trend line, to be aligned with assignment instructions.** Notice the use of the the _alpha_ argument in _ggplot_ to make the individual lines more translucent and make the overall trend lines show up more:
 
 ```{r ggp2_3_days_activ}
 
@@ -364,9 +363,7 @@ daily_act_df =
     names_prefix = "min", # Removing the prefix
     values_to = "MIMS" # Using the naming convention from the instructions and article
   ) %>% 
-  mutate(minute = as.numeric(minute)) %>%  # Converting to numeric
-  group_by(sex, education, minute) %>% # Keeping the variables we need
-  summarize(avg_MIMS = mean(MIMS, na.rm = TRUE)) # Creating average MIMS activity for each minute
+  mutate(minute = as.numeric(minute))
  
 
 # Inspecting the data frame:
@@ -377,21 +374,21 @@ head(daily_act_df, 5)
   
 daily_act_df %>% 
   ggplot(
-    aes(x = minute, y = avg_MIMS, color = sex)) +
-  geom_point(aes(color = sex), alpha = 0.05) + # Grabbed from lecture example
-  geom_smooth(se = FALSE) +
+    aes(x = minute, y = MIMS, color = sex)) +
+  geom_line(aes(color = sex, group = seqn), alpha = 0.04) + #Made individual lines very translucent to observe trend line better
+  geom_smooth(aes(color = sex), se = FALSE) +
   theme(legend.position = "bottom",
-        plot.title = element_text(hjust = 0.5),) + # Centering my title
+        plot.title = element_text(hjust = 0.5)) + # Centering my title
   facet_grid(. ~ education) + 
-  labs(title = "Accelerometer Activity in 24 Hours (Subdivided by Sex and Education Level)", 
+  labs(title = "Individual Accelerometer Activity in 24 Hours\n(Subdivided by Sex and Education Level)", 
        x = "Minute in the Day", 
-       y = "Average Activity (MIMS)",
+       y = "Activity (MIMS)",
        color = "Sex",
        caption = "Data publicly available from NHANES study.")
 
 ```
 
-**Plot Description:** The graphs produced clearly demonstrate a general trend: there is slight activity in the first minutes of the day (late night), which one may speculate it is due to not having reached deep sleep yet or just getting into bed. Then, approximately around the minute 400 (corresponding to the 6-7 AM time mark) all groups have a drastic increase in activity corresponding to the start of their day. This pattern persists irrespective of sex or education level. However, we can see that the group with an education level less than high school has a higher average MIMS in the first hours of the day compared to the other education groups. Moreover, female individuals seem to have slightly more activity throughout the day compared to males in all education groups. It is also interesting to highlight that those with education more than high school have a plateau in their average activity for most of the day, potentially due to more sedentary jobs, compared to those with less than high school education.
+**Plot Description:** The graphs produced clearly demonstrate a general trend: there is slight activity in the first minutes of the day (late night) and then a period of slower activity (probably by getting into bed or just starting to attempt sleep). In general, though, there is a lot of variability in the individual data, as shown by the semi-translucent individual activity lines surrounding each trend line. Then, approximately around the minute 400 (corresponding to the 6-7 AM time mark) all groups have a drastic increase in activity corresponding to the start of their day. This pattern persists irrespective of sex or education level. However, we can see that the group with an education level less than high school has a higher average MIMS in the first hours of the day compared to the other education groups. Moreover, female individuals seem to have slightly more activity throughout the day compared to males, which is more noticeable in the education level higher than high school. It is also interesting to highlight that those with education more than high school have a more pronounced plateau in their average activity for most of the day, potentially due to more sedentary jobs that individuals with higher levels of education may have compared to those with less than high school education. There are also some individual activity lines in this education group that have quite steep upticks in activity in the later portions of the day, which is why our y-axis scale goes to around 100 MIMS.
 
 ## Problem 3: Citi Bike Data
 
